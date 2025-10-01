@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>タワー・オブ・テラー 管理室</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background: linear-gradient(to bottom, #0f172a, #1e293b);
+      color: #f1f5f9;
+    }
+    header, footer {
+      padding: 10px 20px;
+      background: #0f172a;
+    }
+    h1 { margin: 0; }
+    .container {
+      display: grid;
+      grid-template-columns: 5fr 7fr;
+      gap: 16px;
+      padding: 16px;
+      max-width: 1400px;
+      margin: auto;
+    }
+    .panel {
+      background: #1e293b;
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+      margin-bottom: 12px;
+    }
+    .camera {
+      background: #0008;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 150px;
+      color: #64748b;
+      border-radius: 6px;
+    }
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      padding: 6px 10px;
+      margin: 2px;
+      color: #fff;
+    }
+    .green { background: #059669; }
+    .amber { background: #d97706; }
+    .red { background: #b91c1c; }
+    .blue { background: #2563eb; }
+    .gray { background: #475569; }
+    .floor-buttons {
+      display: grid;
+      grid-template-columns: repeat(4,1fr);
+      gap: 6px;
+    }
+    .log {
+      font-family: monospace;
+      font-size: 12px;
+      max-height: 150px;
+      overflow-y: auto;
+    }
+    table {
+      width: 100%;
+      font-size: 13px;
+      border-collapse: collapse;
+    }
+    td {
+      padding: 4px 6px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>タワー制御 — エレベーター01</h1>
+    <small id="time"></small>
+  </header>
+
+  <div class="container">
+    <!-- 左側 -->
+    <div>
+      <div class="panel">
+        <div>カメラ: 車内</div>
+        <div class="camera">カメラ映像</div>
+      </div>
+      <div class="panel">
+        <div>カメラ: シャフト</div>
+        <div class="camera">カメラ映像</div>
+      </div>
+      <div class="panel">
+        <h3>システム指標</h3>
+        <div id="indicators"></div>
+        <div>
+          <button class="green" onclick="openDoors()">開く</button>
+          <button class="amber" onclick="closeDoors()">閉じる</button>
+        </div>
+        <div>
+          <button class="gray" onclick="toggleLockout()">ロック切替</button>
+          <button class="red" onclick="emergencyStop()">非常停止</button>
+          <button class="gray" onclick="clearEmergency()">非常解除</button>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>フロアマップ</h3>
+        <div class="floor-buttons" id="floorMap"></div>
+      </div>
+      <div class="panel">
+        <h3>イベントログ</h3>
+        <div id="log" class="log"></div>
+      </div>
+    </div>
+
+    <!-- 右側 -->
+    <div>
+      <div class="panel">
+        <h2 style="font-size:40px" id="currentFloor">1</h2>
+        <p>現在の階</p>
+      </div>
+      <div class="panel">
+        <h3>テレメトリーテーブル</h3>
+        <table id="telemetryTable"></table>
+      </div>
+      <div class="panel">
+        <h3>最近の操作</h3>
+        <button class="gray" onclick="moveToFloor(1)">ロビーへ戻す</button>
+        <button class="gray" onclick="moveToFloor(MAX_FLOOR)">最上階へ送る</button>
+        <button class="amber" onclick="stopElevator()">停止</button>
+        <button class="gray" onclick="clearLog()">ログを消去</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    デモUI · 実際のデータに置き換えて使用してください
+  </footer>
+
+  <script>
+    const MAX_FLOOR = 13;
+    let telemetry = {
+      floor: 1,
+      targetFloor: null,
+      doors: "閉",
+      moving: false,
+      speed: 0,
+      lockedOut: false,
+      emergency: false,
+    };
+    const logDiv = document.getElementById("log");
+
+    function pushLog(msg) {
+      const line = document.createElement("div");
+      line.textContent = new Date().toLocaleTimeString()+" — "+msg;
+      logDiv.prepend(line);
+      if (logDiv.children.length > 50) logDiv.removeChild(logDiv.lastChild);
+    }
+
+    function updateUI() {
+      document.getElementById("time").textContent = new Date().toLocaleString();
+      document.getElementById("currentFloor").textContent = telemetry.floor;
+      // 指標
+      document.getElementById("indicators").innerHTML = `
+        <div>現在階: ${telemetry.floor}</div>
+        <div>目標階: ${telemetry.targetFloor ?? "—"}</div>
+        <div>ドア: ${telemetry.doors}</div>
+        <div>移動中: ${telemetry.moving ? "はい" : "いいえ"}</div>
+      `;
+      // テレメトリーテーブル
+      document.getElementById("telemetryTable").innerHTML = `
+        <tr><td>現在階</td><td>${telemetry.floor}</td></tr>
+        <tr><td>目標階</td><td>${telemetry.targetFloor ?? "—"}</td></tr>
+        <tr><td>ドア</td><td>${telemetry.doors}</td></tr>
+        <tr><td>移動中</td><td>${telemetry.moving ? "はい" : "いいえ"}</td></tr>
+        <tr><td>速度</td><td>${telemetry.speed}</td></tr>
+        <tr><td>ロック</td><td>${telemetry.lockedOut ? "はい" : "いいえ"}</td></tr>
+        <tr><td>非常</td><td>${telemetry.emergency ? "はい" : "いいえ"}</td></tr>
+      `;
+    }
+
+    function moveToFloor(f) {
+      if (telemetry.lockedOut || telemetry.emergency) return pushLog("操作がブロックされました");
+      telemetry.targetFloor = f;
+      pushLog("指令: "+f+"階へ移動");
+    }
+    function openDoors(){telemetry.doors="開";pushLog("ドアを開けました");}
+    function closeDoors(){telemetry.doors="閉";pushLog("ドアを閉じました");}
+    function toggleLockout(){telemetry.lockedOut=!telemetry.lockedOut;pushLog("ロック"+(telemetry.lockedOut?"有効":"解除"));}
+    function emergencyStop(){telemetry.emergency=true;telemetry.moving=false;telemetry.speed=0;pushLog("非常停止");}
+    function clearEmergency(){telemetry.emergency=false;pushLog("非常を解除しました");}
+    function stopElevator(){telemetry.targetFloor=null;pushLog("手動停止");}
+    function clearLog(){logDiv.innerHTML="";}
+
+    // フロアボタン
+    const mapDiv=document.getElementById("floorMap");
+    for(let f=MAX_FLOOR;f>=1;f--){
+      const b=document.createElement("button");
+      b.textContent=f;
+      b.className="gray";
+      b.onclick=()=>moveToFloor(f);
+      mapDiv.appendChild(b);
+    }
+
+    // シミュレーション
+    setInterval(()=>{
+      if(telemetry.emergency||telemetry.lockedOut) return;
+      if(telemetry.targetFloor && telemetry.targetFloor!==telemetry.floor){
+        telemetry.moving=true;
+        telemetry.floor += telemetry.targetFloor>telemetry.floor?1:-1;
+        telemetry.speed=1;
+        if(telemetry.floor===telemetry.targetFloor){
+          telemetry.moving=false;
+          telemetry.speed=0;
+          telemetry.doors="開";
+          telemetry.targetFloor=null;
+          pushLog(telemetry.floor+"階に到着");
+        }
+      }else{
+        telemetry.moving=false;
+        telemetry.speed=0;
+      }
+      updateUI();
+    },1000);
+
+    updateUI();
+  </script>
+</body>
+</html>
