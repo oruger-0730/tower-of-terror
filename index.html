@@ -15,29 +15,67 @@
       background: #0f172a;
     }
     h1 { margin: 0; }
-    .container {
+    .elevator-section {
       display: grid;
-      grid-template-columns: 5fr 7fr;
+      grid-template-columns: repeat(3, 1fr);
       gap: 16px;
       padding: 16px;
-      max-width: 1400px;
+      max-width: 1700px;
       margin: auto;
     }
-    .panel {
+    .elevator-panel {
       background: #1e293b;
       border-radius: 8px;
       padding: 12px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-      margin-bottom: 12px;
     }
-    .camera {
-      background: #0008;
+    .camera-layout {
       display: flex;
-      align-items: center;
+      gap: 6px;
       justify-content: center;
-      height: 150px;
-      color: #64748b;
+      margin-bottom: 8px;
+    }
+    .shaft {
+      background: #0008;
+      width: 90px;
+      height: 300px;
       border-radius: 6px;
+      position: relative;
+      overflow: hidden;
+    }
+    .car {
+      position: absolute;
+      width: 90px;
+      height: 45px;
+      background: #4b5563;
+      border-radius: 6px;
+      bottom: 0;
+      transition: bottom 2s linear;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #fff;
+      font-size: 14px;
+    }
+    .doors {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 100%;
+      display: flex;
+      pointer-events: none;
+    }
+    .door {
+      width: 50%;
+      background: #1f2937;
+      transition: transform 1.5s ease;
+    }
+    .door.open-left {
+      transform: translateX(-100%);
+    }
+    .door.open-right {
+      transform: translateX(100%);
     }
     button {
       cursor: pointer;
@@ -60,170 +98,159 @@
     .log {
       font-family: monospace;
       font-size: 12px;
-      max-height: 150px;
+      max-height: 120px;
       overflow-y: auto;
-    }
-    table {
-      width: 100%;
-      font-size: 13px;
-      border-collapse: collapse;
-    }
-    td {
-      padding: 4px 6px;
+      background: #0f172a;
+      padding: 6px;
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1>タワー制御 — エレベーター01</h1>
-    <small id="time"></small>
-  </header>
+<header>
+  <h1>タワー制御 — 3エレベーター管理</h1>
+  <small id="time"></small>
+</header>
 
-  <div class="container">
-    <!-- 左側 -->
-    <div>
-      <div class="panel">
-        <div>カメラ: 車内</div>
-        <div class="camera">カメラ映像</div>
-      </div>
-      <div class="panel">
-        <div>カメラ: シャフト</div>
-        <div class="camera">カメラ映像</div>
-      </div>
-      <div class="panel">
-        <h3>システム指標</h3>
-        <div id="indicators"></div>
-        <div>
-          <button class="green" onclick="openDoors()">開く</button>
-          <button class="amber" onclick="closeDoors()">閉じる</button>
+<div class="elevator-section" id="system"></div>
+
+<footer>
+  デモUI · 実際のデータに置き換えて使用してください
+</footer>
+
+<script>
+const MAX_FLOOR = 20;
+const elevators = {
+  A: createElevator("A"),
+  B: createElevator("B"),
+  C: createElevator("C"),
+};
+
+function createElevator(id) {
+  return {
+    id,
+    floor: 1,
+    targetFloor: null,
+    doors: "closed",
+    moving: false,
+    speed: 0,
+    lockedOut: false,
+    emergency: false,
+    log: [],
+  };
+}
+
+function pushLog(el, msg) {
+  el.log.unshift(new Date().toLocaleTimeString() + " — " + msg);
+  if (el.log.length > 40) el.log.pop();
+}
+
+function render() {
+  document.getElementById("time").textContent = new Date().toLocaleString();
+  const sys = document.getElementById("system");
+  sys.innerHTML = "";
+  Object.values(elevators).forEach(el => {
+    const div = document.createElement("div");
+    div.className = "elevator-panel";
+    const percent = (el.floor - 1) / (MAX_FLOOR - 1) * 100;
+    div.innerHTML = `
+      <h2>エレベーター ${el.id}</h2>
+
+      <div class="camera-layout">
+        <div class="shaft">
+          <div class="car" id="car-${el.id}" style="bottom:${percent}%;">${el.floor}F</div>
+          <div class="doors">
+            <div class="door ${(el.doors==="open") ? "open-left" : ""}"></div>
+            <div class="door ${(el.doors==="open") ? "open-right" : ""}"></div>
+          </div>
         </div>
-        <div>
-          <button class="gray" onclick="toggleLockout()">ロック切替</button>
-          <button class="red" onclick="emergencyStop()">非常停止</button>
-          <button class="gray" onclick="clearEmergency()">非常解除</button>
-        </div>
       </div>
-      <div class="panel">
-        <h3>フロアマップ</h3>
-        <div class="floor-buttons" id="floorMap"></div>
+
+      <p><b>現在階:</b> ${el.floor} / <b>目標:</b> ${el.targetFloor ?? "—"}</p>
+      <p><b>状態:</b> ${el.emergency ? "🚨非常" : el.lockedOut ? "🔒ロック" : el.moving ? "移動中" : "停止"}</p>
+      
+      <div class="floor-buttons">
+        ${Array.from({length:MAX_FLOOR},(_,i)=>MAX_FLOOR-i).map(f=>`<button class="gray" onclick="move('${el.id}',${f})">${f}</button>`).join("")}
       </div>
-      <div class="panel">
-        <h3>イベントログ</h3>
-        <div id="log" class="log"></div>
-      </div>
-    </div>
+      <br>
+      <button class="green" onclick="doors('${el.id}',true)">開</button>
+      <button class="amber" onclick="doors('${el.id}',false)">閉</button>
+      <button class="gray" onclick="toggleLock('${el.id}')">ロック切替</button>
+      <button class="red" onclick="emergency('${el.id}')">非常停止</button>
+      <button class="blue" onclick="clearEmergency('${el.id}')">非常解除</button>
+      <br><br>
+      <button class="blue" onclick="move('${el.id}',1)">ロビーへ</button>
+      <button class="blue" onclick="move('${el.id}',${MAX_FLOOR})">最上階へ</button>
+      <button class="amber" onclick="stop('${el.id}')">停止</button>
 
-    <!-- 右側 -->
-    <div>
-      <div class="panel">
-        <h2 style="font-size:40px" id="currentFloor">1</h2>
-        <p>現在の階</p>
-      </div>
-      <div class="panel">
-        <h3>テレメトリーテーブル</h3>
-        <table id="telemetryTable"></table>
-      </div>
-      <div class="panel">
-        <h3>最近の操作</h3>
-        <button class="gray" onclick="moveToFloor(1)">ロビーへ戻す</button>
-        <button class="gray" onclick="moveToFloor(MAX_FLOOR)">最上階へ送る</button>
-        <button class="amber" onclick="stopElevator()">停止</button>
-        <button class="gray" onclick="clearLog()">ログを消去</button>
-      </div>
-    </div>
-  </div>
+      <h4>ログ</h4>
+      <div class="log">${el.log.map(l=>`<div>${l}</div>`).join("")}</div>
+    `;
+    sys.appendChild(div);
+  });
+}
 
-  <footer>
-    デモUI · 実際のデータに置き換えて使用してください
-  </footer>
+function move(id,f) {
+  const el = elevators[id];
+  if (el.lockedOut || el.emergency) return pushLog(el,"操作ブロック");
+  el.targetFloor = f;
+  doors(id,false);
+  pushLog(el,`指令: ${f}階へ移動`);
+}
 
-  <script>
-    const MAX_FLOOR = 20;
-    let telemetry = {
-      floor: 1,
-      targetFloor: null,
-      doors: "閉",
-      moving: false,
-      speed: 0,
-      lockedOut: false,
-      emergency: false,
-    };
-    const logDiv = document.getElementById("log");
+function stop(id) {
+  const el = elevators[id];
+  el.targetFloor = null;
+  el.moving = false;
+  pushLog(el,"手動停止");
+}
 
-    function pushLog(msg) {
-      const line = document.createElement("div");
-      line.textContent = new Date().toLocaleTimeString()+" — "+msg;
-      logDiv.prepend(line);
-      if (logDiv.children.length > 50) logDiv.removeChild(logDiv.lastChild);
-    }
+function doors(id,open) {
+  const el = elevators[id];
+  el.doors = open ? "open" : "closed";
+  pushLog(el, open ? "ドア開" : "ドア閉");
+}
 
-    function updateUI() {
-      document.getElementById("time").textContent = new Date().toLocaleString();
-      document.getElementById("currentFloor").textContent = telemetry.floor;
-      // 指標
-      document.getElementById("indicators").innerHTML = `
-        <div>現在階: ${telemetry.floor}</div>
-        <div>目標階: ${telemetry.targetFloor ?? "—"}</div>
-        <div>ドア: ${telemetry.doors}</div>
-        <div>移動中: ${telemetry.moving ? "はい" : "いいえ"}</div>
-      `;
-      // テレメトリーテーブル
-      document.getElementById("telemetryTable").innerHTML = `
-        <tr><td>現在階</td><td>${telemetry.floor}</td></tr>
-        <tr><td>目標階</td><td>${telemetry.targetFloor ?? "—"}</td></tr>
-        <tr><td>ドア</td><td>${telemetry.doors}</td></tr>
-        <tr><td>移動中</td><td>${telemetry.moving ? "はい" : "いいえ"}</td></tr>
-        <tr><td>速度</td><td>${telemetry.speed}</td></tr>
-        <tr><td>ロック</td><td>${telemetry.lockedOut ? "はい" : "いいえ"}</td></tr>
-        <tr><td>非常</td><td>${telemetry.emergency ? "はい" : "いいえ"}</td></tr>
-      `;
-    }
+function toggleLock(id){
+  const el = elevators[id];
+  el.lockedOut = !el.lockedOut;
+  pushLog(el, el.lockedOut ? "ロック有効" : "ロック解除");
+}
 
-    function moveToFloor(f) {
-      if (telemetry.lockedOut || telemetry.emergency) return pushLog("操作がブロックされました");
-      telemetry.targetFloor = f;
-      pushLog("指令: "+f+"階へ移動");
-    }
-    function openDoors(){telemetry.doors="開";pushLog("ドアを開けました");}
-    function closeDoors(){telemetry.doors="閉";pushLog("ドアを閉じました");}
-    function toggleLockout(){telemetry.lockedOut=!telemetry.lockedOut;pushLog("ロック"+(telemetry.lockedOut?"有効":"解除"));}
-    function emergencyStop(){telemetry.emergency=true;telemetry.moving=false;telemetry.speed=0;pushLog("非常停止");}
-    function clearEmergency(){telemetry.emergency=false;pushLog("非常を解除しました");}
-    function stopElevator(){telemetry.targetFloor=null;pushLog("手動停止");}
-    function clearLog(){logDiv.innerHTML="";}
+function emergency(id){
+  const el = elevators[id];
+  el.emergency = true;
+  el.moving = false;
+  el.speed = 0;
+  pushLog(el,"⚠ 非常停止");
+}
 
-    // フロアボタン
-    const mapDiv=document.getElementById("floorMap");
-    for(let f=MAX_FLOOR;f>=1;f--){
-      const b=document.createElement("button");
-      b.textContent=f;
-      b.className="gray";
-      b.onclick=()=>moveToFloor(f);
-      mapDiv.appendChild(b);
-    }
+function clearEmergency(id){
+  const el = elevators[id];
+  el.emergency = false;
+  pushLog(el,"非常解除");
+}
 
-    // シミュレーション
-    setInterval(()=>{
-      if(telemetry.emergency||telemetry.lockedOut) return;
-      if(telemetry.targetFloor && telemetry.targetFloor!==telemetry.floor){
-        telemetry.moving=true;
-        telemetry.floor += telemetry.targetFloor>telemetry.floor?1:-1;
-        telemetry.speed=1;
-        if(telemetry.floor===telemetry.targetFloor){
-          telemetry.moving=false;
-          telemetry.speed=0;
-          telemetry.doors="開";
-          telemetry.targetFloor=null;
-          pushLog(telemetry.floor+"階に到着");
-        }
-      }else{
-        telemetry.moving=false;
-        telemetry.speed=0;
+setInterval(()=>{
+  Object.values(elevators).forEach(el=>{
+    if (el.emergency || el.lockedOut) return;
+    if (el.targetFloor && el.targetFloor !== el.floor) {
+      el.moving = true;
+      el.speed = 1;
+      el.floor += (el.targetFloor > el.floor ? 1 : -1);
+      pushLog(el, `${el.floor}階通過`);
+      if (el.floor === el.targetFloor) {
+        el.moving = false;
+        el.speed = 0;
+        doors(el.id,true);
+        pushLog(el, `${el.floor}階に到着`);
+        el.targetFloor = null;
       }
-      updateUI();
-    },1000);
+    }
+  });
+  render();
+},2000); // <-- 移動を 2秒/階 に遅延
 
-    updateUI();
-  </script>
+render();
+</script>
 </body>
 </html>
