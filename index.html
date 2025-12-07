@@ -1,246 +1,270 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<title>Elevator Control Panel</title>
-<style>
-body {
-  background: #1d1f27;
-  color: #fff;
-  font-family: "Segoe UI", sans-serif;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  user-select: none;
-}
-.panel {
-  background: #2c2f3a;
-  padding: 25px;
-  border-radius: 15px;
-  width: 390px;
-  box-shadow: 0 0 10px rgba(0,0,0,.6);
-}
-h1 {
-  text-align: center;
-  margin-top: 0;
-  font-size: 26px;
-}
-.floors {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-bottom: 25px;
-}
-button {
-  padding: 12px;
-  border: none;
-  background: #444857;
-  color: white;
-  font-size: 17px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: .2s;
-}
-button:disabled {
-  opacity: .4;
-  cursor: not-allowed;
-}
-button.active {
-  background: #ff972d;
-}
-.toggleRow {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 12px;
-}
-#log {
-  margin-top: 18px;
-  border: 1px solid #555;
-  padding: 10px;
-  height: 100px;
-  overflow-y: auto;
-  font-size: 14px;
-  background: #111;
-}
-#elevatorBox {
-  width: 320px;
-  height: 160px;
-  margin: 12px auto;
-  border: 3px solid #999;
-  position: relative;
-  overflow: hidden;
-  background: #0a0e12;
-}
-#cabin {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  background: #9ca8b3;
-  transition: top 2.4s linear;
-}
-#doors {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-}
-.door {
-  width: 50%;
-  height: 100%;
-  background: #cbd6e0;
-  position: absolute;
-  transition: .8s;
-}
-#leftDoor { left: 0; }
-#rightDoor { right: 0; }
-.dark {
-  background: #0a0b10 !important;
-}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>監視モニター風 エレベーター制御パネル — SVG 表示版</title>
+  <style>
+    :root{
+      --bg:#04121a; --panel:#071824; --accent:#00d1ff; --muted:#7f96a3; --glass:rgba(255,255,255,0.02);
+      --car:#0f2b36; --carEdge:rgba(255,255,255,0.04);
+      --led:#00d1ff; --danger:#ff6b6b;
+      font-family: Inter, Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:linear-gradient(180deg,#04121a 0%, #051422 70%);color:#cfe6f2;display:flex;align-items:stretch;padding:20px}
+
+    .container{width:100%;display:grid;grid-template-columns:360px 1fr;gap:18px}
+    .panel{background:linear-gradient(180deg,var(--panel),#04101a);border-radius:12px;padding:18px;box-shadow:0 8px 40px rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.02)}
+    .title{display:flex;align-items:center;gap:12px}
+    .logo{width:52px;height:52px;border-radius:8px;background:linear-gradient(135deg,var(--accent),#4b6bff);display:flex;align-items:center;justify-content:center;font-weight:800;color:#02151a}
+    h1{font-size:16px;margin:0}
+    .sub{color:var(--muted);font-size:13px}
+
+    .controls{margin-top:12px;display:flex;flex-direction:column;gap:10px}
+    .section{background:linear-gradient(180deg,rgba(255,255,255,0.01),transparent);padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.02)}
+    .row{display:flex;gap:8px;align-items:center}
+    .btn{background:linear-gradient(180deg,#081520,#07121a);border-radius:8px;padding:10px 12px;text-align:center;cursor:pointer;border:1px solid rgba(255,255,255,0.03);user-select:none;transition:transform .06s}
+    .btn:active{transform:translateY(2px)}
+    .btn.primary{background:linear-gradient(180deg,var(--accent),#4b6bff);color:#02161b;font-weight:700}
+    .led{width:10px;height:10px;border-radius:999px;background:rgba(0,0,0,0.12);box-shadow:0 0 10px rgba(0,0,0,0.2)}
+    .led.on{background:var(--led);box-shadow:0 0 12px var(--led)}
+
+    .floorGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+    .floorBtn{padding:8px;border-radius:6px;background:rgba(255,255,255,0.02);cursor:pointer;text-align:center}
+    .floorBtn.active{box-shadow:0 8px 20px rgba(0,209,255,0.06);background:linear-gradient(180deg,rgba(0,209,255,0.06),transparent)}
+    .small{font-size:12px;color:var(--muted)}
+
+    .monitor{display:flex;flex-direction:column;gap:12px}
+    .monitorTop{display:flex;justify-content:space-between;align-items:center}
+    .monitorArea{background:linear-gradient(180deg,rgba(255,255,255,0.01),transparent);border-radius:12px;padding:18px;height:calc(100vh - 120px);overflow:hidden;position:relative}
+
+    /* SVG shaft sizing */
+    .svgWrap{display:flex;gap:18px;height:100%;align-items:center;justify-content:center}
+    .shaftSvg{background:linear-gradient(180deg,#041521,#02101a);border-radius:12px;padding:12px;box-shadow:inset 0 0 40px rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.02)}
+
+    .log{position:absolute;left:18px;bottom:18px;width:calc(100% - 36px);height:96px;background:rgba(0,0,0,0.35);border-radius:8px;padding:8px;overflow:auto;font-size:12px;color:var(--muted)}
+
+    .shake{animation:shake 0.6s ease-in-out}
+    @keyframes shake{0%{transform:translateY(0)}20%{transform:translateY(-6px)}40%{transform:translateY(3px)}60%{transform:translateY(-3px)}80%{transform:translateY(2px)}100%{transform:translateY(0)}}
+
+    .dim{filter:brightness(0.45)}
+    @media (max-width:1100px){ .container{grid-template-columns:1fr} .svgWrap{flex-direction:column} .shaftSvg{width:100%} }
+  </style>
 </head>
 <body>
+  <div class="container">
+    <div class="panel">
+      <div class="title"><div class="logo">MON</div><div><h1>監視モニター — SVG版</h1><div class="sub">SVGで外観位置図を描画。3台 / 1〜20F</div></div></div>
 
-<div class="panel">
-  <h1>Elevator Control</h1>
-  <div id="elevatorBox">
-    <div id="cabin"></div>
-    <div id="doors">
-      <div id="leftDoor" class="door"></div>
-      <div id="rightDoor" class="door"></div>
+      <div class="controls">
+        <div class="section">
+          <div class="row"><div class="small">操作エレベーター</div><div style="margin-left:auto;display:flex;gap:8px"><div class="btn" id="selectPrev">◀</div><div class="btn primary" id="selectedLabel">E1</div><div class="btn" id="selectNext">▶</div></div></div>
+        </div>
+
+        <div class="section">
+          <div class="small">フロア選択（1〜20）</div>
+          <div class="floorGrid" id="floorGrid"></div>
+        </div>
+
+        <div class="section">
+          <div class="row"><div class="small">自動運転</div><div style="margin-left:auto" class="row"><div class="btn" id="autoToggle">OFF</div><div style="width:10px"></div><div class="led" id="autoLed"></div></div></div>
+          <div class="row" style="margin-top:8px"><div class="small">速度</div><input id="speedRange" type="range" min="0.5" max="2.2" step="0.1" value="1" style="flex:1;margin:0 10px"><div id="speedVal">1.0×</div></div>
+        </div>
+
+        <div class="section">
+          <div class="row"><div class="btn" id="openBtn">ドア開</div><div class="btn" id="closeBtn">ドア閉</div><div class="btn" id="stopBtn" style="background:linear-gradient(180deg,#3a1012,#591014)">非常停止</div></div>
+          <div class="row" style="margin-top:8px"><div class="btn" id="nightBtn">夜間モード</div><div class="btn" id="allReturn">全台 1F 戻す</div></div>
+        </div>
+
+        <div class="section small">ショートカット: 数字キーでフロア、Oで開、Cで閉、Spaceで非常停止</div>
+      </div>
+    </div>
+
+    <div class="monitor">
+      <div class="monitorTop"><div class="small">外観位置図（SVG）</div><div class="small">3台のシャフトを表示</div></div>
+
+      <div class="monitorArea" id="monitorArea">
+        <div class="svgWrap" id="svgWrap"></div>
+        <div class="log" id="log">システム起動...</div>
+      </div>
     </div>
   </div>
 
-  <div class="floors">
-    <button class="floorBtn" data-floor="1">1</button>
-    <button class="floorBtn" data-floor="2">2</button>
-    <button class="floorBtn" data-floor="3">3</button>
-    <button class="floorBtn" data-floor="4">4</button>
-    <button class="floorBtn" data-floor="5">5</button>
-    <button class="floorBtn" data-floor="6">6</button>
-  </div>
+  <script>
+    // CONFIG
+    const ELEVATORS = 3;
+    const FLOORS = 20;
+    const SHAFT_WIDTH = 300; // SVG width per shaft
+    const SHAFT_HEIGHT = 820; // SVG height
+    const CAR_W = 220; const CAR_H = 88;
 
-  <div class="toggleRow">
-    <button id="autoBtn">AUTO</button>
-    <button id="nightBtn">Night</button>
-  </div>
+    const svgWrap = document.getElementById('svgWrap');
+    const floorGrid = document.getElementById('floorGrid');
+    const selectedLabel = document.getElementById('selectedLabel');
+    const selectPrev = document.getElementById('selectPrev');
+    const selectNext = document.getElementById('selectNext');
+    const autoToggle = document.getElementById('autoToggle');
+    const autoLed = document.getElementById('autoLed');
+    const speedRange = document.getElementById('speedRange');
+    const speedVal = document.getElementById('speedVal');
+    const openBtn = document.getElementById('openBtn');
+    const closeBtn = document.getElementById('closeBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const nightBtn = document.getElementById('nightBtn');
+    const allReturn = document.getElementById('allReturn');
+    const logEl = document.getElementById('log');
 
-  <div id="log"></div>
-</div>
+    let selected = 0; let autoMode = false; let nightMode = false;
 
-<script>
-let currentFloor = 1;
-let moving = false;
-let autoMode = false;
-let night = false;
-let callQueue = [];
-let autoTimer;
+    // audio
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+    function beep(freq,dur,vol=0.08){ if(!audioCtx) audioCtx = new AudioCtx(); const o = audioCtx.createOscillator(); const g = audioCtx.createGain(); o.type='sine'; o.frequency.value=freq; g.gain.value=vol; o.connect(g); g.connect(audioCtx.destination); o.start(); setTimeout(()=>o.stop(), dur*1000); }
 
-const cabin = document.getElementById("cabin");
-const leftDoor = document.getElementById("leftDoor");
-const rightDoor = document.getElementById("rightDoor");
-const log = document.getElementById("log");
-const autoBtn = document.getElementById("autoBtn");
-const nightBtn = document.getElementById("nightBtn");
-const floorBtns = document.querySelectorAll(".floorBtn");
+    // elevator objects
+    const elevators = [];
 
-function addLog(text) {
-  log.innerHTML += text + "<br>";
-  log.scrollTop = log.scrollHeight;
-}
+    function log(msg){ const t = new Date().toLocaleTimeString(); logEl.innerHTML = `[${t}] ${msg}<br>` + logEl.innerHTML; }
 
-// ドア動作
-function openDoors() {
-  leftDoor.style.transform = "translateX(-100%)";
-  rightDoor.style.transform = "translateX(100%)";
-}
-function closeDoors() {
-  leftDoor.style.transform = "translateX(0)";
-  rightDoor.style.transform = "translateX(0)";
-}
+    // build floor buttons
+    function buildFloorButtons(){ for(let i=1;i<=FLOORS;i++){ const b = document.createElement('div'); b.className='floorBtn'; b.textContent = i + 'F'; b.dataset.floor = i; b.addEventListener('click', ()=>{ requestFloor(i); press(b); }); floorGrid.appendChild(b); } }
 
-// 手動押下
-floorBtns.forEach(btn => {
-  btn.addEventListener("click", () => {
-    if (moving || autoMode) return;
-    moveToFloor(Number(btn.dataset.floor));
-  });
-});
+    // build SVG shafts
+    function buildShafts(){ for(let e=0;e<ELEVATORS;e++){
+      const ns = `http://www.w3.org/2000/svg`;
+      const svg = document.createElementNS(ns,'svg'); svg.setAttribute('class','shaftSvg'); svg.setAttribute('width',SHAFT_WIDTH); svg.setAttribute('height',SHAFT_HEIGHT); svg.setAttribute('viewBox',`0 0 ${SHAFT_WIDTH} ${SHAFT_HEIGHT}`);
 
-// メイン移動
-function moveToFloor(target) {
-  if (moving) return;
-  moving = true;
-  closeDoors();
-  addLog(`➡ 移動: ${currentFloor}F → ${target}F`);
-  cabin.style.top = `-${(target - 1) * 80}px`;
-  let duration = night ? 4200 : 2400;
-  setTimeout(() => {
-    currentFloor = target;
-    openDoors();
-    addLog(`✔ 到着: ${currentFloor}F`);
-    setTimeout(() => {
-      closeDoors();
-      moving = false;
-    }, 800);
-  }, duration);
-}
+      // background rect
+      const bg = document.createElementNS(ns,'rect'); bg.setAttribute('x',0); bg.setAttribute('y',0); bg.setAttribute('width',SHAFT_WIDTH); bg.setAttribute('height',SHAFT_HEIGHT); bg.setAttribute('rx',12); bg.setAttribute('fill','url(#g'+e+')');
 
-// 自動運転
-function autoLoop() {
-  if (!autoMode) return;
-  if (callQueue.length === 0) return;
+      // gradient defs
+      const defs = document.createElementNS(ns,'defs');
+      const grad = document.createElementNS(ns,'linearGradient'); grad.setAttribute('id','g'+e); grad.setAttribute('x1','0%'); grad.setAttribute('y1','0%'); grad.setAttribute('x2','0%'); grad.setAttribute('y2','100%');
+      const stop1 = document.createElementNS(ns,'stop'); stop1.setAttribute('offset','0%'); stop1.setAttribute('stop-color','#08121a'); stop1.setAttribute('stop-opacity','1');
+      const stop2 = document.createElementNS(ns,'stop'); stop2.setAttribute('offset','100%'); stop2.setAttribute('stop-color','#04121a'); stop2.setAttribute('stop-opacity','1');
+      grad.appendChild(stop1); grad.appendChild(stop2); defs.appendChild(grad);
 
-  let next = callQueue.shift();
-  highlightButton(next);
-  moveToFloor(next);
+      // marks group
+      const marksG = document.createElementNS(ns,'g'); marksG.setAttribute('class','marks');
+      // compute spacing
+      const padTop = 40; const padBottom = 40; const usable = SHAFT_HEIGHT - padTop - padBottom; const step = usable / (FLOORS - 1);
+      for(let f=1; f<=FLOORS; f++){
+        const y = SHAFT_HEIGHT - padBottom - (f-1)*step;
+        const txt = document.createElementNS(ns,'text'); txt.setAttribute('x',18); txt.setAttribute('y',y+6); txt.setAttribute('fill','#6f8a97'); txt.setAttribute('font-size','14'); txt.setAttribute('font-weight','600'); txt.textContent = f + 'F'; marksG.appendChild(txt);
+      }
 
-  let stopTime = Math.random() * 3000 + 1000; // 1〜4秒
-  setTimeout(autoLoop, stopTime + 2500);
-}
+      // track line
+      const track = document.createElementNS(ns,'rect'); track.setAttribute('x',96); track.setAttribute('y',padTop); track.setAttribute('width',SHAFT_WIDTH - 130); track.setAttribute('height',usable); track.setAttribute('rx',8); track.setAttribute('fill','rgba(255,255,255,0.02)');
 
-function highlightButton(f) {
-  const btn = document.querySelector(`.floorBtn[data-floor="${f}"]`);
-  if (!btn) return;
-  btn.classList.add("active");
-  setTimeout(() => btn.classList.remove("active"), 1500);
-}
+      // car group (move by translate)
+      const carG = document.createElementNS(ns,'g'); carG.setAttribute('class','carG'); carG.setAttribute('transform',`translate(${(SHAFT_WIDTH - CAR_W)/2}, ${SHAFT_HEIGHT - padBottom - CAR_H})`);
+      const carRect = document.createElementNS(ns,'rect'); carRect.setAttribute('x',0); carRect.setAttribute('y',0); carRect.setAttribute('width',CAR_W); carRect.setAttribute('height',CAR_H); carRect.setAttribute('rx',8); carRect.setAttribute('fill','#0d2e36'); carRect.setAttribute('stroke','#0f3940'); carRect.setAttribute('stroke-width','2');
+      const carLabel = document.createElementNS(ns,'text'); carLabel.setAttribute('x',CAR_W/2); carLabel.setAttribute('y',CAR_H/2 + 8); carLabel.setAttribute('fill','#eafcff'); carLabel.setAttribute('font-size','28'); carLabel.setAttribute('font-weight','800'); carLabel.setAttribute('text-anchor','middle'); carLabel.textContent = '1F';
 
-// 呼び出し生成
-function startCallGenerator() {
-  autoTimer = setInterval(() => {
-    let floor = Math.floor(Math.random() * 6) + 1;
-    callQueue.push(floor);
-    addLog(`📞 呼び出し: ${floor}F`);
-  }, Math.random() * 4000 + 5000);
-}
+      // doors (two rects) to animate via class
+      const doorL = document.createElementNS(ns,'rect'); doorL.setAttribute('x',0); doorL.setAttribute('y',0); doorL.setAttribute('width',CAR_W/2); doorL.setAttribute('height',CAR_H); doorL.setAttribute('fill','rgba(255,255,255,0.02)'); doorL.setAttribute('class','doorL');
+      const doorR = document.createElementNS(ns,'rect'); doorR.setAttribute('x',CAR_W/2); doorR.setAttribute('y',0); doorR.setAttribute('width',CAR_W/2); doorR.setAttribute('height',CAR_H); doorR.setAttribute('fill','rgba(255,255,255,0.02)'); doorR.setAttribute('class','doorR');
 
-function stopCallGenerator() {
-  clearInterval(autoTimer);
-}
+      carG.appendChild(carRect); carG.appendChild(doorL); carG.appendChild(doorR); carG.appendChild(carLabel);
 
-// AUTOボタン
-autoBtn.addEventListener("click", () => {
-  autoMode = !autoMode;
-  autoBtn.classList.toggle("active", autoMode);
-  addLog(autoMode ? "🟢 自動運転開始" : "🔴 自動運転停止");
+      // led runner (dots on track)
+      const runnerG = document.createElementNS(ns,'g'); runnerG.setAttribute('class','runner');
+      const ledDot = document.createElementNS(ns,'circle'); ledDot.setAttribute('cx',120); ledDot.setAttribute('cy',SHAFT_HEIGHT/2); ledDot.setAttribute('r',6); ledDot.setAttribute('fill','#00d1ff'); ledDot.setAttribute('opacity','0.12'); runnerG.appendChild(ledDot);
 
-  if (autoMode) {
-    floorBtns.forEach(b => (b.disabled = true));
-    startCallGenerator();
-    setTimeout(autoLoop, 1000);
-  } else {
-    stopCallGenerator();
-    floorBtns.forEach(b => (b.disabled = false));
-  }
-});
+      // assemble
+      svg.appendChild(defs); svg.appendChild(bg); svg.appendChild(track); svg.appendChild(marksG); svg.appendChild(runnerG); svg.appendChild(carG);
 
-// Nightモード
-nightBtn.addEventListener("click", () => {
-  night = !night;
-  nightBtn.classList.toggle("active", night);
-  document.body.classList.toggle("dark", night);
-  addLog(night ? "🌙 Nightモード" : "☀ 昼モード");
-});
-</script>
+      // wrap
+      const wrap = document.createElement('div'); wrap.style.width = SHAFT_WIDTH + 'px'; wrap.style.height = SHAFT_HEIGHT + 'px'; wrap.appendChild(svg);
+      svgWrap.appendChild(wrap);
+
+      // store reference
+      elevators.push({index:e, svg, carG, carLabel, doorL, doorR, runner:ledDot, padTop, padBottom, step, usable, floor:1, queue:[], moving:false, stopped:false});
+    }}
+
+    function press(el){ el.style.transform='translateY(2px)'; setTimeout(()=>el.style.transform='',120); beep(900,0.06,0.06); }
+
+    function updateSelectedLabel(){ selectedLabel.textContent = 'E' + (selected+1); }
+    selectPrev.addEventListener('click', ()=>{ selected = (selected-1+ELEVATORS)%ELEVATORS; updateSelectedLabel(); press(selectPrev); });
+    selectNext.addEventListener('click', ()=>{ selected = (selected+1)%ELEVATORS; updateSelectedLabel(); press(selectNext); });
+
+    speedRange.addEventListener('input', ()=>{ speedVal.textContent = Number(speedRange.value).toFixed(1) + '×'; });
+    autoToggle.addEventListener('click', ()=>{ autoMode = !autoMode; autoToggle.textContent = autoMode ? 'ON' : 'OFF'; autoLed.classList.toggle('on', autoMode); log('自動運転: ' + (autoMode ? 'ON' : 'OFF')); if(autoMode) autoLoop(); press(autoToggle); });
+
+    openBtn.addEventListener('click', ()=>{ const e = elevators[selected]; openDoors(e); press(openBtn); });
+    closeBtn.addEventListener('click', ()=>{ const e = elevators[selected]; closeDoors(e); press(closeBtn); });
+    stopBtn.addEventListener('click', ()=>{ const e = elevators[selected]; emergencyStop(e); press(stopBtn); });
+    nightBtn.addEventListener('click', ()=>{ nightMode = !nightMode; document.getElementById('monitorArea').classList.toggle('dim', nightMode); nightBtn.textContent = nightMode ? '夜間: ON' : '夜間: OFF'; press(nightBtn); });
+    allReturn.addEventListener('click', ()=>{ elevators.forEach(ev=>{ ev.queue = [1]; processQueue(ev); }); press(allReturn); log('全台を1Fへ戻します'); });
+
+    function requestFloor(f){ const e = elevators[selected]; if(e.floor===f){ log(`E${e.index+1}: ${f}F は既に現在の階です`); return } e.queue.push(f); highlightFloorButton(f,true); log(`E${e.index+1}: ${f}F を要求`); processQueue(e); }
+    function highlightFloorButton(f,on){ const btn = [...floorGrid.children].find(b=>b.dataset.floor==f); if(btn) btn.classList.toggle('active', on); }
+
+    function openDoors(e){ // animate doors by changing attributes
+      e.doorL.setAttribute('transform','translate(-' + (CAR_W/2) + ',0)'); e.doorR.setAttribute('transform','translate(' + (CAR_W/2) + ',0)'); e.state = 'ドア開'; beep(520,0.12,0.06); log(`E${e.index+1}: ドア開`); }
+    function closeDoors(e){ e.doorL.setAttribute('transform','translate(0,0)'); e.doorR.setAttribute('transform','translate(0,0)'); e.state = 'ドア閉'; beep(320,0.08,0.05); log(`E${e.index+1}: ドア閉`); }
+    function emergencyStop(e){ e.stopped=true; e.queue=[]; e.moving=false; // add shake by translating carG
+      e.carG.setAttribute('transform', e.carG.getAttribute('transform') + ' translate(0,-6)'); setTimeout(()=>{ // revert
+        // remove the last translate (quick approach: reset to calculated position)
+        const y = floorToY(e, e.floor); e.carG.setAttribute('transform', `translate(${(SHAFT_WIDTH - CAR_W)/2}, ${y})`);
+        e.stopped=false; }, 600);
+      beep(120,0.4,0.18); log(`E${e.index+1}: 非常停止`);
+    }
+
+    function floorToY(eObj, floor){ // returns y for translate
+      const {padTop, padBottom, usable, step} = eObj;
+      // y measured from top inside svg coordinate
+      const y = SHAFT_HEIGHT - padBottom - (floor - 1)*step - CAR_H;
+      return Math.round(y);
+    }
+
+    async function moveElevator(eObj, target){ if(eObj.stopped) return; if(eObj.floor===target) return; eObj.moving=true; log(`E${eObj.index+1} 発車 → ${target}F`); closeDoors(eObj);
+      const dist = Math.abs(eObj.floor - target);
+      const basePerFloor = 700; const duration = Math.max(300, basePerFloor * dist / Number(speedRange.value));
+      const startY = floorToY(eObj, eObj.floor); const endY = floorToY(eObj, target);
+      const startTime = performance.now(); beep(240 + dist * 60, Math.min(1.2, dist * 0.18), 0.06);
+      animateRunner(eObj, dist, duration);
+      return new Promise(resolve=>{
+        function frame(now){ const t = Math.min(1, (now - startTime)/duration); const ease = t<.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2; const cur = Math.round(startY + (endY - startY)*ease);
+          eObj.carG.setAttribute('transform', `translate(${(SHAFT_WIDTH - CAR_W)/2}, ${cur})`);
+          // update label text
+          const approx = Math.round(eObj.floor + (target - eObj.floor)*ease);
+          eObj.carLabel.textContent = approx + 'F';
+          if(t<1 && !eObj.stopped) requestAnimationFrame(frame); else { eObj.floor = target; eObj.carLabel.textContent = target + 'F'; eObj.moving=false; log(`E${eObj.index+1} 到着: ${target}F`); resolve(); }
+        }
+        requestAnimationFrame(frame);
+      });
+    }
+
+    function animateRunner(eObj, dist, duration){ const dot = eObj.runner; if(!dot) return; dot.setAttribute('opacity','0.9'); const start = performance.now(); // simple oscillation
+      const left = 120; let dir = 1; const anim = setInterval(()=>{ if(eObj.stopped) { clearInterval(anim); dot.setAttribute('opacity','0.12'); return } const now = performance.now(); const p = ((now - start) % 600) / 600; const x = left + Math.sin(p * Math.PI * 2) * 80; dot.setAttribute('cx', x); }, Math.max(60, duration/20)); setTimeout(()=>{ clearInterval(anim); dot.setAttribute('opacity','0.12'); }, duration+120);
+    }
+
+    async function processQueue(eObj){ if(eObj.processing) return; eObj.processing = true; while(eObj.queue.length>0 && !eObj.stopped){ const target = eObj.queue.shift(); highlightFloorButton(target,false); await moveElevator(eObj, target); openDoors(eObj); await new Promise(r=>setTimeout(r, 600 + Math.random()*700)); closeDoors(eObj); } eObj.processing = false; }
+
+    async function autoLoop(){ while(autoMode){ const e = elevators[Math.floor(Math.random()*elevators.length)]; const f = Math.floor(Math.random()*FLOORS)+1; e.queue.push(f); processQueue(e); await new Promise(r=>setTimeout(r, 1200 + Math.random()*2400)); } }
+
+    // keyboard
+    window.addEventListener('keydown', (ev)=>{ if(ev.key>='1' && ev.key<='9'){ const n = Number(ev.key); if(n<=FLOORS) requestFloor(n); } if(ev.key==='o') openBtn.click(); if(ev.key==='c') closeBtn.click(); if(ev.key===' ') stopBtn.click(); });
+
+    // startup
+    (function init(){ buildFloorButtons(); buildShafts(); setTimeout(()=>{
+      // set initial positions and store references
+      elevators.forEach(e=>{
+        // find elements inside svg
+        const svg = e.svg;
+        const carG = svg.querySelector('.carG'); const label = carG.querySelector('text'); const doorL = carG.querySelector('.doorL'); const doorR = carG.querySelector('.doorR'); const runner = svg.querySelector('.runner circle');
+        e.carG = carG; e.carLabel = label; e.doorL = doorL; e.doorR = doorR; e.runner = runner;
+        const y = floorToY(e, e.floor); e.carG.setAttribute('transform', `translate(${(SHAFT_WIDTH - CAR_W)/2}, ${y})`);
+      });
+      log('SVG UI 初期化完了 — 3台 / 1〜20F');
+    }, 120);
+    })();
+
+    // expose for debugging
+    window._SVG_MONITOR = { elevators, requestFloor, openDoors, closeDoors, emergencyStop };
+  </script>
 </body>
 </html>
