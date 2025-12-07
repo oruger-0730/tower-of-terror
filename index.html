@@ -1,186 +1,351 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<title>エレベーターシステム</title>
-<style>
-body {
-  background: #0f172a;
-  color: white;
-  font-family: "Noto Sans JP", sans-serif;
-  margin: 0;
-}
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Elevator Control Panel — 操作感のあるエレベーターUI</title>
+  <style>
+    :root{
+      --bg:#0f1724; --panel:#0b1220; --accent:#00d1ff; --muted:#9aa6b2; --glass:rgba(255,255,255,0.04);
+      --train:#0ea5a4; --danger:#ff6b6b;
+      font-family: Inter, Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:linear-gradient(180deg,#071021 0%, #081828 60%);color:#e6eef6;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px}
+    .wrap{width:1100px;max-width:100%;display:grid;grid-template-columns:420px 1fr;gap:20px}
 
-.container {
-  display: flex;
-  gap: 20px;
-  padding: 20px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
+    /* left: panel */
+    .panel{background:linear-gradient(180deg,var(--panel),#071124);border-radius:16px;padding:20px;box-shadow:0 8px 30px rgba(2,6,23,0.7);border:1px solid rgba(255,255,255,0.03)}
+    .title{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+    .logo{width:56px;height:56px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#6f7dff);display:flex;align-items:center;justify-content:center;font-weight:700;color:#031022}
+    .title h1{font-size:18px;margin:0}
+    .sub{color:var(--muted);font-size:13px}
 
-/* --- エレベーターカード --- */
-.elevator {
-  width: 320px;
-  background: #1e293b;
-  padding: 15px;
-  border-radius: 10px;
-}
+    .status{background:var(--glass);padding:12px;border-radius:10px;margin-bottom:12px}
+    .statusRow{display:flex;justify-content:space-between;align-items:center}
+    .bigFloor{font-size:44px;font-weight:800;letter-spacing:2px}
+    .small{font-size:12px;color:var(--muted)}
 
-/* --- 外観位置図（シャフト & カゴ）--- */
-.shaft {
-  width: 200px;
-  height: 330px;
-  background: #0a0a0a;
-  margin: auto;
-  position: relative;
-  border-radius: 6px;
-  border: 2px solid #334155;
-  overflow: hidden;
-}
+    .controls{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .card{background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.02)}
+    .buttons{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    .btn{background:linear-gradient(180deg,#08132a,#061022);border-radius:8px;padding:14px;text-align:center;cursor:pointer;border:1px solid rgba(255,255,255,0.03);user-select:none;transition:transform .08s,box-shadow .08s}
+    .btn:active{transform:translateY(2px) scale(.995);box-shadow:inset 0 2px 6px rgba(0,0,0,0.6)}
+    .btn.floor{font-weight:700}
+    .btn.lit{box-shadow:0 6px 18px rgba(0,209,255,0.12);background:linear-gradient(180deg,#002233,#002b3a)}
 
-.car {
-  width: 130px;
-  height: 60px;
-  background: #64748b;
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: 0;
-  border-radius: 4px;
-  z-index: 10;
-  transition: bottom 2s linear;
-}
+    .toggles{display:flex;flex-direction:column;gap:8px}
+    .toggle{display:flex;align-items:center;gap:10px}
+    .switch{width:48px;height:28px;background:#061322;border-radius:999px;padding:4px;display:flex;align-items:center;cursor:pointer}
+    .knob{width:20px;height:20px;border-radius:999px;background:#cfeff6;box-shadow:0 2px 6px rgba(0,0,0,0.6);transform:translateX(0);transition:transform .18s}
+    .switch.on{background:linear-gradient(90deg,var(--accent),#6f7dff)}
+    .switch.on .knob{transform:translateX(20px)}
 
-/* --- ドア（左右スライドする）--- */
-.door {
-  width: 50%;
-  height: 100%;
-  background: #94a3b8;
-  position: absolute;
-  transition: transform 0.8s ease;
-}
+    .slider{display:flex;align-items:center;gap:8px}
+    input[type=range]{width:100%}
 
-.door.left { left: 0; }
-.door.right { right: 0; }
+    /* right: shaft */
+    .shaft{background:linear-gradient(180deg,#071523,#07101a);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px}
+    .shaftTop{display:flex;justify-content:space-between;align-items:center}
+    .floors{flex:1;display:flex;gap:20px;align-items:center}
+    .floorList{width:140px;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px}
+    .floorItem{padding:10px;border-radius:8px;display:flex;justify-content:space-between;align-items:center;cursor:pointer}
+    .floorItem:hover{background:rgba(255,255,255,0.02)}
 
-.door.open-left  { transform: translateX(-80%); }
-.door.open-right { transform: translateX(80%); }
+    .elevatorShaft{flex:1;background:linear-gradient(180deg,#06121b,#041018);border-radius:12px;padding:18px;position:relative;overflow:hidden}
+    .shaftGrid{position:absolute;inset:16px;top:16px;bottom:16px;left:16px;right:16px;border-radius:8px;border:1px dashed rgba(255,255,255,0.03)}
 
-/* --- 状態表示 & 階表示 --- */
-.status { margin-top: 10px; font-size: 18px; }
-.floor { font-size: 16px; margin-top: 5px; }
+    .car{width:160px;height:120px;background:linear-gradient(180deg,#0b1b25,#062029);border-radius:8px;position:absolute;left:calc(50% - 80px);display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,0.03);box-shadow:0 14px 40px rgba(2,6,23,0.6)}
+    .door{position:absolute;left:0;top:0;bottom:0;width:50%;background:linear-gradient(90deg,rgba(255,255,255,0.02),transparent);transition:transform .6s cubic-bezier(.25,.9,.2,1)}
+    .door.right{right:0;left:auto}
+    .door.open.left{transform:translateX(-100%)}
+    .door.open.right{transform:translateX(100%)}
+    .carWindow{font-size:22px;font-weight:800}
 
-/* --- 階ボタン --- */
-.buttons {
-  margin-top: 10px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  justify-content: center;
-}
+    .log{background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);padding:10px;border-radius:10px;height:110px;overflow:auto;font-size:13px;color:var(--muted)}
 
-button {
-  width: 55px;
-  height: 33px;
-  border: none;
-  border-radius: 5px;
-  background: #334155;
-  color: white;
-  cursor: pointer;
-}
-button:hover { background: #475569; }
-</style>
+    .controlsHint{font-size:12px;color:var(--muted);margin-top:6px}
+
+    /* small responsive */
+    @media (max-width:980px){.wrap{grid-template-columns:1fr} .car{left:20px}}
+  </style>
 </head>
-
 <body>
-<div class="container" id="wrapper"></div>
+  <div class="wrap">
+    <div class="panel">
+      <div class="title"><div class="logo">EL</div>
+        <div><h1>Elevator Control Panel</h1><div class="sub">操作感を重視したデモUI — 押して動かす楽しさ</div></div>
+      </div>
 
-<script>
-class Elevator {
-  constructor(name) {
-    this.name = name;
-    this.current = 20;
-    this.target = null;
-    this.busy = false;
-    this.build();
-  }
-
-  build() {
-    const wrap = document.createElement("div");
-    wrap.className = "elevator";
-    wrap.innerHTML = `
-      <h2>${this.name}</h2>
-      <div class="shaft">
-        <div class="car" id="car-${this.name}">
-          <div class="door left"></div>
-          <div class="door right"></div>
+      <div class="status">
+        <div class="statusRow">
+          <div>
+            <div class="small">現在の階</div>
+            <div class="bigFloor" id="currentFloor">1</div>
+            <div class="small">状態: <span id="state">停車</span></div>
+          </div>
+          <div style="text-align:right">
+            <div class="small">速度</div>
+            <div id="speedLabel">1.0×</div>
+          </div>
         </div>
       </div>
-      <div class="status" id="status-${this.name}">状態: 停止</div>
-      <div class="floor" id="floor-${this.name}">現在階: ${this.current} / 目標: —</div>
-      <div class="buttons" id="btn-${this.name}"></div>
-    `;
-    document.getElementById("wrapper").appendChild(wrap);
 
-    /* 階ボタン生成 */
-    const btnBox = wrap.querySelector(`#btn-${this.name}`);
-    [...Array(20)].map((_, i) => {
-      const f = 20 - i;
-      const b = document.createElement("button");
-      b.textContent = f;
-      b.onclick = () => this.move(f);
-      btnBox.appendChild(b);
-    });
-  }
+      <div class="controls">
+        <div class="card">
+          <div style="font-size:13px;margin-bottom:8px">フロアボタン</div>
+          <div class="buttons" id="floorButtons"></div>
+          <div class="controlsHint">フロア番号を押すと指定した階へ移動します。押した感を大切に。</div>
+        </div>
 
-  updateUI(status) {
-    document.getElementById(`status-${this.name}`).textContent = `状態: ${status}`;
-    document.getElementById(`floor-${this.name}`).textContent = `現在階: ${this.current} / 目標: ${this.target ?? "—"}`;
-  }
+        <div class="card">
+          <div style="font-size:13px;margin-bottom:8px">操作</div>
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <div class="btn" id="openBtn">ドア開</div>
+            <div class="btn" id="closeBtn">ドア閉</div>
+            <div class="btn" id="stopBtn" style="background:linear-gradient(180deg,#2b0810,#380912)">非常停止</div>
+          </div>
 
-  openDoor() {
-    const car = document.getElementById(`car-${this.name}`);
-    car.querySelector(".left").classList.add("open-left");
-    car.querySelector(".right").classList.add("open-right");
-  }
+          <div style="font-size:13px;margin-bottom:6px">電源 / 自動</div>
+          <div class="toggles">
+            <div class="toggle"><div class="switch on" id="powerSwitch"><div class="knob"></div></div><div class="small">電源</div></div>
+            <div class="toggle"><div class="switch" id="autoSwitch"><div class="knob"></div></div><div class="small">自動運転</div></div>
+          </div>
+        </div>
 
-  closeDoor() {
-    const car = document.getElementById(`car-${this.name}`);
-    car.querySelector(".left").classList.remove("open-left");
-    car.querySelector(".right").classList.remove("open-right");
-  }
+        <div class="card" style="grid-column:1 / -1">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <div style="width:40px;text-align:center">速度</div>
+            <div style="flex:1" class="slider"><input type="range" id="speedRange" min="0.4" max="2.2" step="0.1" value="1"></div>
+            <div style="width:44px;text-align:center" id="speedValue">1.0×</div>
+          </div>
+          <div class="log" id="log"></div>
+        </div>
+      </div>
+    </div>
 
-  async move(dest) {
-    if (this.busy || dest === this.current) return;
-    this.busy = true;
-    this.target = dest;
-    this.updateUI("運転");
+    <div class="shaft">
+      <div class="shaftTop"><div class="small">シャフト表示</div><div class="small">シミュレーション</div></div>
+      <div class="floors">
+        <div class="floorList" id="floorList"></div>
 
-    /* ドア閉 */
-    this.closeDoor();
+        <div class="elevatorShaft">
+          <div class="shaftGrid"></div>
+          <div class="car" id="car" style="bottom:8px">
+            <div class="door left" id="doorLeft"></div>
+            <div class="door right" id="doorRight"></div>
+            <div class="carWindow" id="carLabel">1F</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-    /* カゴ移動中のループ */
-    while (this.current !== this.target) {
-      await new Promise(r => setTimeout(r, 800));
-      this.current += (this.target > this.current ? 1 : -1);
-      const pos = (this.current - 1) * (330 / 19);
-      document.getElementById(`car-${this.name}`).style.bottom = `${pos}px`;
-      this.updateUI("運転");
+  <script>
+    // Config
+    const FLOORS = 8; // 1..FLOORS
+    const shaft = document.querySelector('.elevatorShaft');
+    const car = document.getElementById('car');
+    const doorLeft = document.getElementById('doorLeft');
+    const doorRight = document.getElementById('doorRight');
+    const currentFloorLabel = document.getElementById('currentFloor');
+    const carLabel = document.getElementById('carLabel');
+    const stateLabel = document.getElementById('state');
+    const logEl = document.getElementById('log');
+    const floorButtons = document.getElementById('floorButtons');
+    const floorList = document.getElementById('floorList');
+    const openBtn = document.getElementById('openBtn');
+    const closeBtn = document.getElementById('closeBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const powerSwitch = document.getElementById('powerSwitch');
+    const autoSwitch = document.getElementById('autoSwitch');
+    const speedRange = document.getElementById('speedRange');
+    const speedValue = document.getElementById('speedValue');
+    const speedLabel = document.getElementById('speedLabel');
+
+    let currentFloor = 1;
+    let targetQueue = [];
+    let moving = false;
+    let doorsOpen = false;
+    let hasPower = true;
+    let autoMode = false;
+    let stopped = false;
+
+    // Audio context for tactile beeps
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+    function beep(freq=440, dur=0.08, vol=0.1){
+      if(!audioCtx) audioCtx = new AudioCtx();
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = 'sine'; o.frequency.value = freq;
+      g.gain.value = vol;
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start();
+      setTimeout(()=>{o.stop()}, dur*1000);
     }
 
-    /* 到着 → ドア開 */
-    this.updateUI("停止");
-    this.openDoor();
-    await new Promise(r => setTimeout(r, 2000));
-    this.closeDoor();
-    this.busy = false;
-    this.target = null;
-    this.updateUI("停止");
-  }
-}
+    function log(msg){
+      const time = new Date().toLocaleTimeString();
+      logEl.innerHTML = `<div>[${time}] ${msg}</div>` + logEl.innerHTML;
+    }
 
-["エレベーター A", "エレベーター B", "エレベーター C"].forEach(n => new Elevator(n));
-</script>
+    // Build floor buttons and list
+    for(let i=FLOORS;i>=1;i--){
+      const btn = document.createElement('div');
+      btn.className='btn floor';
+      btn.textContent = i + 'F';
+      btn.dataset.floor = i;
+      btn.addEventListener('click', ()=>{
+        if(!hasPower){log('電源が入っていません'); flash(btn); return}
+        enqueueFloor(i);
+        animatePress(btn);
+      });
+      floorButtons.appendChild(btn);
+
+      const item = document.createElement('div');
+      item.className='floorItem';
+      item.innerHTML = `<div>${i}F</div><div class="small">呼び鈴</div>`;
+      item.addEventListener('click', ()=>{enqueueFloor(i); animatePress(item)});
+      floorList.appendChild(item);
+    }
+
+    function enqueueFloor(f){
+      if(targetQueue.includes(f) || f===currentFloor){log(`${f}F は既に現在の階です`); return}
+      targetQueue.push(f);
+      highlightButton(f,true);
+      log(`${f}F をキューに追加`);
+      if(!moving) processQueue();
+    }
+
+    function highlightButton(f,on){
+      const btn = [...floorButtons.children].find(b=>b.dataset.floor==f);
+      if(btn) btn.classList.toggle('lit', on);
+    }
+
+    function animatePress(el){
+      el.style.transform='translateY(2px)';
+      setTimeout(()=>el.style.transform='',120);
+      beep(900,0.06,0.06);
+    }
+    function flash(el){
+      const orig = el.style.boxShadow;
+      el.style.boxShadow='0 8px 26px rgba(255,0,0,0.14)';
+      setTimeout(()=>el.style.boxShadow=orig,300);
+      beep(180,0.12,0.12);
+    }
+
+    // Controls
+    openBtn.addEventListener('click', ()=>{ if(!hasPower) return log('電源OFF'); openDoors(); animatePress(openBtn)});
+    closeBtn.addEventListener('click', ()=>{ if(!hasPower) return log('電源OFF'); closeDoors(); animatePress(closeBtn)});
+    stopBtn.addEventListener('click', ()=>{ stopped=true; moving=false; targetQueue=[]; stateLabel.textContent='非常停止'; animatePress(stopBtn); beep(120,0.4,0.16); log('非常停止が作動しました'); });
+
+    powerSwitch.addEventListener('click', ()=>{ hasPower=!powerSwitch.classList.contains('on'); powerSwitch.classList.toggle('on'); if(!powerSwitch.classList.contains('on')){hasPower=false; log('電源オフ'); stateLabel.textContent='電源オフ';} else {hasPower=true; log('電源オン'); stateLabel.textContent='停車';} animatePress(powerSwitch); });
+    autoSwitch.addEventListener('click', ()=>{ autoMode=!autoSwitch.classList.contains('on'); autoSwitch.classList.toggle('on'); autoMode = autoSwitch.classList.contains('on'); log('自動運転: ' + (autoMode ? 'ON' : 'OFF')); animatePress(autoSwitch); if(autoMode) autoRoutine();});
+
+    speedRange.addEventListener('input', ()=>{ speedValue.textContent = Number(speedRange.value).toFixed(1)+ '×'; speedLabel.textContent = Number(speedRange.value).toFixed(1)+ '×'; });
+
+    // Doors
+    function openDoors(){ doorsOpen=true; doorLeft.classList.add('open'); doorRight.classList.add('open'); stateLabel.textContent='ドア開'; beep(520,0.12,0.08); log('ドアが開きました'); }
+    function closeDoors(){ doorsOpen=false; doorLeft.classList.remove('open'); doorRight.classList.remove('open'); stateLabel.textContent='ドア閉'; beep(320,0.08,0.07); log('ドアが閉まりました'); }
+
+    // Movement
+    async function processQueue(){
+      if(stopped || !hasPower) return;
+      if(targetQueue.length===0){ moving=false; stateLabel.textContent='停車'; return }
+      moving=true;
+      const next = targetQueue.shift();
+      highlightButton(next,false);
+      await moveToFloor(next);
+      // open doors automatically
+      openDoors();
+      await wait(800 + Math.random()*600);
+      closeDoors();
+      moving=false;
+      if(targetQueue.length>0) processQueue(); else stateLabel.textContent='停車';
+    }
+
+    function floorToPosition(f){
+      // compute bottom positioning in px inside shaft
+      const shaftRect = shaft.getBoundingClientRect();
+      const carH = car.getBoundingClientRect().height;
+      const padding = 16 + 16; // top+bottom padding inside shaft
+      const available = shaftRect.height - carH - padding;
+      const ratio = (f-1)/(FLOORS-1 || 1);
+      return Math.round(8 + ratio*available); // bottom px
+    }
+
+    function wait(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+    async function moveToFloor(f){
+      if(stopped || !hasPower) return;
+      stateLabel.textContent = `移動中 → ${f}F`;
+      log(` ${f}F に向けて発車`);
+      // close doors first
+      if(doorsOpen) closeDoors();
+      const start = currentFloor;
+      const distance = Math.abs(f - start);
+      const baseTimePerFloor = 800; // ms
+      const speedFactor = Number(speedRange.value);
+      const duration = Math.max(300, baseTimePerFloor * distance / speedFactor);
+      // animate
+      const startPos = floorToPosition(currentFloor);
+      const endPos = floorToPosition(f);
+      const delta = endPos - startPos;
+      const startTime = performance.now();
+      beep(220 + distance*80, Math.min(1, distance*0.2), 0.06);
+      return new Promise(resolve=>{
+        function frame(now){
+          const t = Math.min(1, (now - startTime)/duration);
+          const ease = t<.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2; // smooth ease
+          const cur = startPos + delta*ease;
+          car.style.bottom = cur + 'px';
+          // update floor label when passing floors
+          const passing = Math.round( start + (f>start ? (f-start)*ease : (f-start)*(1-ease)) );
+          currentFloorLabel.textContent = Math.max(1, Math.min(FLOORS, Math.round( start + (f-start)*ease )));
+          carLabel.textContent = Math.round( start + (f-start)*ease ) + 'F';
+          if(t<1 && !stopped && hasPower) requestAnimationFrame(frame); else {
+            currentFloor = f; currentFloorLabel.textContent = f; carLabel.textContent = f+'F'; log(`${f}F に到着`); resolve();
+          }
+        }
+        requestAnimationFrame(frame);
+      });
+    }
+
+    // Auto routine simple demo
+    async function autoRoutine(){
+      if(!autoMode) return;
+      log('自動運転スケジュール開始');
+      // simple loop: go to random floors every few seconds
+      while(autoMode && hasPower && !stopped){
+        const f = Math.floor(Math.random()*FLOORS)+1;
+        enqueueFloor(f);
+        await wait(1500 + Math.random()*2000);
+      }
+    }
+
+    // helper: click numeric keys to call floors
+    window.addEventListener('keydown',(e)=>{
+      if(e.key>='1' && e.key<='9'){ const n = Number(e.key); if(n<=FLOORS) enqueueFloor(n); }
+      if(e.key==='o') openDoors();
+      if(e.key==='c') closeDoors();
+      if(e.key===' ') { stopBtn.click(); }
+    });
+
+    // initial setup
+    (function init(){
+      // set car bottom to floor 1
+      car.style.bottom = floorToPosition(1) + 'px';
+      currentFloorLabel.textContent = '1';
+      carLabel.textContent = '1F';
+      log('システム起動');
+    })();
+
+    // small UI polish: toggle knob elements clickable
+    document.querySelectorAll('.switch').forEach(s=>s.addEventListener('mousedown',()=>{ s.classList.add('press'); setTimeout(()=>s.classList.remove('press'),120); }));
+
+    // expose API for testers
+    window._ELEVATOR = { enqueueFloor, openDoors, closeDoors, stop: ()=>{stopped=true;}, resume: ()=>{stopped=false; processQueue();} };
+  </script>
 </body>
 </html>
