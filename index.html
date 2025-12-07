@@ -57,6 +57,23 @@
       color: #fff;
       font-size: 14px;
     }
+    .shaft {
+  background: #0a0a0a; /* 少し明るくする */
+  border: 2px solid #334155; /* 枠を追加して視認性アップ */
+}
+
+.car {
+  background: #64748b; /* 明るめのグレーで視認性UP */
+}
+
+.camera-layout {
+  min-height: 330px; /* シャフトが潰れて消える問題の防止 */
+}
+
+.doors {
+  pointer-events: none;
+  z-index: 5; /* ドアは上、でもカゴは見える */
+}
     .doors {
       position: absolute;
       top: 0;
